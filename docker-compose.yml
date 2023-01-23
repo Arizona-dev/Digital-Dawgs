@@ -1,0 +1,40 @@
+version: '3'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: digital-dawgs
+      POSTGRES_USER: user
+    volumes:
+      - ./db-data-postgres:/var/lib/postgresql/data:rw
+    ports:
+      - 5432:5432
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+
+  node:
+    image: node:18-alpine
+    user: node
+    entrypoint: node
+    tty: true
+    stdin_open: true
+    working_dir: /home/node
+    env_file: .env
+    ports:
+      - $PORT:$PORT
+      - $CLIENT_PORT:$CLIENT_PORT
+    volumes:
+      - .:/home/node
+    depends_on:
+      - postgres
+
+networks:
+  default:
+    driver: bridge
