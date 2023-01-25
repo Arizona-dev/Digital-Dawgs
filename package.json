@@ -1,6 +1,7 @@
 {
   "name": "digital-dawgs",
   "version": "1.0.0",
+  "type": "module",
   "description": "Digital Dawgs is a community driven forum to gather people and informations about diverse topics. Which includes a live chatting forum between users, a chat to communicate with the adminstrators and a chatbot answers when no admin is available.",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
