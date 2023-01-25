@@ -10,7 +10,7 @@ export default {
         process.env.NODE_ENV === 'production' && terser(),
     ],
     output: {
-        file: '../build/server/migrate.js',
+        file: '../build/migrate.js',
         format: 'esm',
     },
 };
