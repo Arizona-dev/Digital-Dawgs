@@ -7,12 +7,14 @@ Which includes a live chatting forum between users, a chat to communicate with t
 ## Prerequisites
 - make sure you have installed **docker** and **docker-compose**
 
-Create a .env inside the `./back` folder
+Create a .env at the root
 Add the following lines :
 
 ```bash
 APP_ENV=dev
 JWT_PASSPHRASE=your_secret
+PORT=3000
+CLIENT_PORT=3001
 ```
 
 ## Run the app
