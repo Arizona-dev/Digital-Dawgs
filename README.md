@@ -15,6 +15,8 @@ APP_ENV=dev
 JWT_PASSPHRASE=your_secret
 PORT=3000
 CLIENT_PORT=3001
+
+DATABASE_URL=postgres://user:password@postgres:5432/digital-dawgs
 ```
 
 ## Run the app
