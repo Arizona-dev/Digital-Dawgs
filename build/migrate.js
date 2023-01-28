@@ -33,13 +33,9 @@ Message.init(
             type: DataTypes.STRING(5000),
             allowNull: false,
         },
-        edited: {
-            type: DataTypes.BOOLEAN,
-            defaultValue: false,
-        },
-        deleted: {
-            type: DataTypes.BOOLEAN,
-            defaultValue: false,
+        media: {
+            type: DataTypes.STRING(255),
+            allowNull: true,
         },
     },
     {
@@ -61,9 +57,6 @@ User.init(
             type: DataTypes.UUID,
             defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
-        },
-        discriminator: {
-            type: DataTypes.INTEGER,
         },
         email: {
             type: DataTypes.STRING,
@@ -120,8 +113,6 @@ User.addHook('beforeCreate', async (user) => {
             await bcryptjs.genSalt(),
         );
     }
-
-    user.discriminator = await generateDiscriminator(user.username);
 });
 
 User.addHook('beforeUpdate', async (user, { fields }) => {
@@ -134,41 +125,63 @@ User.addHook('beforeUpdate', async (user, { fields }) => {
     }
 });
 
-const generateDiscriminator = async (username) => {
-    const x1 = Math.floor(Math.random() * 10), x2 = Math.floor(Math.random() * 10), x3 = Math.floor(Math.random() * 10), x4 = Math.floor(Math.random() * 10);
-    const discriminator = `${x1}${x2}${x3}${x4}`;
-    const userWithSameUsernameAndDiscriminator = await User.findOne({
-        where: {
-            username: username,
-            discriminator: discriminator,
+class Room extends Model {}
+
+Room.init(
+    {
+        id: {
+            type: DataTypes.UUID,
+            defaultValue: DataTypes.UUIDV4,
+            primaryKey: true,
         },
-    });
-
-    if (userWithSameUsernameAndDiscriminator) {
-        await generateDiscriminator(username);
-    }
-
-    return discriminator;
-};
+        title: {
+            type: DataTypes.STRING(255),
+            allowNull: false,
+        },
+        description: {
+            type: DataTypes.STRING(255),
+            allowNull: false,
+        },
+        maxParticipants: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 10,
+        },
+        isPrivate: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+        },
+        closed: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+        },
+        deleted: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+        },
+    },
+    {
+        sequelize: connection,
+        modelName: 'room',
+    },
+);
 
 Message.belongsTo(User, {
-    as: 'sender',
-    foreignKey: 'senderId',
+    as: 'author',
+    foreignKey: 'authorId',
 });
 
-Message.belongsTo(User, {
-    as: 'receiver',
-    foreignKey: 'receiverId',
-});
-
-User.hasMany(Message, {
-    as: 'invitations',
-    foreignKey: 'receiverId',
+Message.belongsTo(Room, {
+    as: 'room',
+    foreignKey: 'roomId',
 });
 
 connection
     .sync({
-        force: false,
+        force: true,
     })
     .then(() => {
         console.log('Database synced');

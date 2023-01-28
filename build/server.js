@@ -1,11 +1,45 @@
 import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
+import cookieSession from 'cookie-session';
+import passport from 'passport';
+import GoogleStrategy from 'passport-google-oauth20';
+import { Strategy, ExtractJwt } from 'passport-jwt';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import { v4 } from 'uuid';
-import Sequelize, { DataTypes, Model } from 'sequelize';
+import { StatusCodes } from 'http-status-codes';
+import jwt from 'jsonwebtoken';
+import Sequelize, { DataTypes, Model, Op } from 'sequelize';
 import bcryptjs from 'bcryptjs';
+import { v4 } from 'uuid';
+
+passport.serializeUser(function (user, done) {
+  done(null, user);
+});
+
+passport.deserializeUser(function (user, done) {
+  done(null, user);
+});
+
+passport.use(new GoogleStrategy({
+  clientID: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  callbackURL: process.env.BACK_BASE_URL + '/api/auth/google/callback',
+  passReqToCallback: true
+},
+  function (request, accessToken, refreshToken, profile, done) {
+    return done(null, profile);
+  }
+));
+
+passport.use(new Strategy({
+  jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+  secretOrKey: process.env.JWT_SECRET,
+},
+  function (jwtPayload, done) {
+    return done(null, jwtPayload.user);
+  }
+));
 
 const config = process.env.NODE_ENV === 'development' ? {
     newUrlParser: true,
@@ -39,13 +73,9 @@ Message.init(
             type: DataTypes.STRING(5000),
             allowNull: false,
         },
-        edited: {
-            type: DataTypes.BOOLEAN,
-            defaultValue: false,
-        },
-        deleted: {
-            type: DataTypes.BOOLEAN,
-            defaultValue: false,
+        media: {
+            type: DataTypes.STRING(255),
+            allowNull: true,
         },
     },
     {
@@ -67,9 +97,6 @@ User.init(
             type: DataTypes.UUID,
             defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
-        },
-        discriminator: {
-            type: DataTypes.INTEGER,
         },
         email: {
             type: DataTypes.STRING,
@@ -126,8 +153,6 @@ User.addHook('beforeCreate', async (user) => {
             await bcryptjs.genSalt(),
         );
     }
-
-    user.discriminator = await generateDiscriminator(user.username);
 });
 
 User.addHook('beforeUpdate', async (user, { fields }) => {
@@ -140,36 +165,173 @@ User.addHook('beforeUpdate', async (user, { fields }) => {
     }
 });
 
-const generateDiscriminator = async (username) => {
-    const x1 = Math.floor(Math.random() * 10), x2 = Math.floor(Math.random() * 10), x3 = Math.floor(Math.random() * 10), x4 = Math.floor(Math.random() * 10);
-    const discriminator = `${x1}${x2}${x3}${x4}`;
-    const userWithSameUsernameAndDiscriminator = await User.findOne({
-        where: {
-            username: username,
-            discriminator: discriminator,
+class Room extends Model {}
+
+Room.init(
+    {
+        id: {
+            type: DataTypes.UUID,
+            defaultValue: DataTypes.UUIDV4,
+            primaryKey: true,
         },
+        title: {
+            type: DataTypes.STRING(255),
+            allowNull: false,
+        },
+        description: {
+            type: DataTypes.STRING(255),
+            allowNull: false,
+        },
+        maxParticipants: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 10,
+        },
+        isPrivate: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+        },
+        closed: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+        },
+        deleted: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+        },
+    },
+    {
+        sequelize: connection,
+        modelName: 'room',
+    },
+);
+
+Message.belongsTo(User, {
+    as: 'author',
+    foreignKey: 'authorId',
+});
+
+Message.belongsTo(Room, {
+    as: 'room',
+    foreignKey: 'roomId',
+});
+
+/* eslint-disable no-param-reassign */
+
+async function googleAuth(req, res) {
+  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res);
+}
+
+async function googleAuthCallback(req, res, next) {
+  passport.authenticate('google', {
+    successRedirect: '/api/auth/success',
+    failureRedirect: '/api/auth/failed',
+  })(req, res, next);
+}
+
+async function authSuccess(req, res) {
+  try {
+    const user = await User.findOne({
+      where: {
+        email: {
+          [Op.eq]: req.user.emails[0].value,
+        },
+      },
     });
 
-    if (userWithSameUsernameAndDiscriminator) {
-        await generateDiscriminator(username);
+    if (!user) {
+      const email = req.user.emails[0].value;
+      const username = req.user.displayName;
+      const avatar = req.user.photos[0].value;
+      const googleId = req.user.id;
+      const active = true;
+
+      user = await User.create({
+        email,
+        username,
+        avatar,
+        googleId,
+        active,
+        role: 'ROLE_USER',
+      });
     }
+    jwt.sign(
+      { user: { ...user } },
+      process.env.JWT_SECRET,
+      { expiresIn: "3h" },
+      (err, token) => {
+        if (err) {
+          return res.redirect('http://localhost:3000/login');
+        }
+        res.redirect(`http://localhost:3000/login?token=${token}`);
+      }
+    );
+  } catch (error) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: error.message });
+  }
+}
 
-    return discriminator;
-};
+async function authFailed(req, res) {
+  res.status(StatusCodes.UNAUTHORIZED).json({ message: 'User not authenticated' });
+}
 
-Message.belongsTo(User, {
-    as: 'sender',
-    foreignKey: 'senderId',
-});
+const router$2 = express.Router();
 
-Message.belongsTo(User, {
-    as: 'receiver',
-    foreignKey: 'receiverId',
-});
+router$2.get('/google', googleAuth);
+router$2.get('/failed', authFailed);
+router$2.get('/success', authSuccess);
+router$2.get('/google/callback', googleAuthCallback);
 
-User.hasMany(Message, {
-    as: 'invitations',
-    foreignKey: 'receiverId',
+async function getUser(req, res) {
+  try {
+    if (!req.isAuthenticated()) {
+      return res.redirect(process.env.FRONT_URL + '/login');
+    }
+    if (!req.user && !req.user.dataValues.email) {
+      return res.json({ message: 'User not authenticated' });
+    }
+    const user = await User.findOne({
+      where: {
+        email: {
+          [Op.eq]: req.user.dataValues.email,
+        },
+      },
+    });
+    user.password = undefined;
+    res.status(StatusCodes.OK).json(user);
+  } catch (error) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: error.message });
+  }
+}
+
+const router$1 = express.Router();
+
+router$1.get('/', passport.authenticate("jwt", { session: false }), getUser);
+
+// import messageRoutes from './message.routes';
+
+const router = express.Router();
+
+const routes = [
+    {
+        path: 'auth',
+        routes: router$2,
+    },
+    {
+        path: 'user',
+        routes: router$1,
+    },
+    // {
+    //     path: 'messages',
+    //     routes: messageRoutes,
+    // },
+];
+
+routes.forEach((route) => {
+    router.use(`/${route.path}`, route.routes);
 });
 
 const createMessage = async (message) => {
@@ -193,18 +355,6 @@ const createMessage = async (message) => {
   return s;
 };
 
-const updateMessage = (message) => Message.update(message, {
-  where: {
-    id: message.id,
-  },
-});
-
-const deleteMessage = (messageId, message) => Message.update(message, {
-  where: {
-    id: messageId,
-  },
-});
-
 const messages = new Set();
 
 class Connection {
@@ -218,9 +368,6 @@ class Connection {
 
     socket.on('getMessages', () => this.getMessages());
     socket.on('message', (value) => this.handleMessage(value));
-    socket.on('friendRequest', (value) => this.handleFriendRequest(value));
-    socket.on('update', (message) => this.editMessage(message));
-    socket.on('delete', (message) => this.deleteMessage(message));
     socket.on('disconnect', () => this.disconnect());
     socket.on('isTyping', (data) => this.sendIsTyping(data));
     socket.on('connect_error', (err) => {
@@ -275,33 +422,10 @@ class Connection {
     }
   }
 
-  async deleteMessage(message) {
-    if (message.sender.id === this.user) {
-      const tmp = message;
-      tmp.deleted = true;
-      const result = await deleteMessage(message.id, tmp);
-
-      if (result[0] > 0) {
-        this.io.sockets.to([message.receiver.id, message.sender.id]).emit('delete', tmp);
-      }
-    }
-  }
-
-  async editMessage(message) {
-    if (message.sender.id === this.user) {
-      const tmp = message;
-      tmp.edited = true;
-      tmp.updated_at = Date.now();
-      const result = await updateMessage(tmp);
-      if (result[0] > 0) this.io.sockets.to([tmp.receiver.id, tmp.sender.id]).emit('update', tmp);
-    }
-  }
-
   disconnect() {
     this.socket.leave(this.user);
     this.user = null;
     this.socket.disconnect();
-    this.socket.broadcast.emit('usersCount', this.io.sockets.sockets.size);
   }
 }
 
@@ -315,14 +439,36 @@ dotenv.config();
 
 const port = process.env.PORT || 3000;
 const server = express();
-const app = createServer(server);
 
 server.use(
   cors({
-    origin: '*', // only allow front call
+    origin: '*',
   }),
 );
 
+server.use(cookieSession({
+  name: 'google-auth-session',
+  keys: ['key1', 'key2'],
+}));
+
+server.use(passport.initialize());
+server.use(passport.session());
+server.use(function (req, res, next) {
+  if (req.session && !req.session.regenerate) {
+    req.session.regenerate = (cb) => {
+      cb();
+    };
+  }
+  if (req.session && !req.session.save) {
+    req.session.save = (cb) => {
+      cb();
+    };
+  }
+  next();
+});
+server.use('/api', router);
+
+const app = createServer(server);
 const io = new Server(app, {
   cors: {
     origin: process.env.FRONT_BASE_URL,
@@ -331,12 +477,7 @@ const io = new Server(app, {
   },
 });
 
-server.get('/', (req, res) => {
-  res.send('Hello World!');
-});
-
-
-server.listen(port, () => {
+app.listen(port, () => {
   console.log(`Listening on http://localhost:${port}`);
 });
 
