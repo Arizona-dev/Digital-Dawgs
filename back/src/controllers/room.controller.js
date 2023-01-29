@@ -1,5 +1,6 @@
 import { StatusCodes } from 'http-status-codes';
 import { Room, Message, User } from '../model/index';
+import { roles } from '../utils/Helpers';
 
 export async function getRooms(req, res) {
   try {
@@ -36,7 +37,6 @@ export async function getRoomMessages(req, res) {
       limit: 50,
       order: [['createdAt', 'DESC']],
     });
-    // sort messages by createdAt
     messages.sort((a, b) => a.createdAt - b.createdAt);
     if (!messages) {
       res.status(StatusCodes.NOT_FOUND).json({ message: 'Messages not found' });
@@ -49,7 +49,7 @@ export async function getRoomMessages(req, res) {
 
 export async function createRoom(req, res) {
   try {
-    if (req.user.dataValues.role !== 'ROLE_ADMIN') {
+    if (req.user.dataValues.role !== roles.ROLE_ADMIN) {
       res.status(StatusCodes.FORBIDDEN).json({ message: 'Forbidden' });
     }
     const { title, description, maxParticipants, isPrivate } = req.body;
@@ -70,7 +70,7 @@ export async function createRoom(req, res) {
 
 export async function updateRoom(req, res) {
   try {
-    if (req.user.dataValues.role !== 'ROLE_ADMIN') {
+    if (req.user.dataValues.role !== roles.ROLE_ADMIN) {
       res.status(StatusCodes.FORBIDDEN).json({ message: 'Forbidden' });
     }
     const room = await Room.update(req.body,
@@ -88,7 +88,7 @@ export async function updateRoom(req, res) {
 
 export async function deleteRoom(req, res) {
   try {
-    if (req.user.dataValues.role !== 'ROLE_ADMIN') {
+    if (req.user.dataValues.role !== roles.ROLE_ADMIN) {
       res.status(StatusCodes.FORBIDDEN).json({ message: 'Forbidden' });
     }
     const room = await Room.destroy({

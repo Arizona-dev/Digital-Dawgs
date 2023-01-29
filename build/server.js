@@ -351,7 +351,6 @@ async function getRoomMessages(req, res) {
       limit: 50,
       order: [['createdAt', 'DESC']],
     });
-    // sort messages by createdAt
     messages.sort((a, b) => a.createdAt - b.createdAt);
     if (!messages) {
       res.status(StatusCodes.NOT_FOUND).json({ message: 'Messages not found' });
@@ -364,7 +363,7 @@ async function getRoomMessages(req, res) {
 
 async function createRoom(req, res) {
   try {
-    if (req.user.dataValues.role !== 'ROLE_ADMIN') {
+    if (req.user.dataValues.role !== roles.ROLE_ADMIN) {
       res.status(StatusCodes.FORBIDDEN).json({ message: 'Forbidden' });
     }
     const { title, description, maxParticipants, isPrivate } = req.body;
@@ -385,7 +384,7 @@ async function createRoom(req, res) {
 
 async function updateRoom$1(req, res) {
   try {
-    if (req.user.dataValues.role !== 'ROLE_ADMIN') {
+    if (req.user.dataValues.role !== roles.ROLE_ADMIN) {
       res.status(StatusCodes.FORBIDDEN).json({ message: 'Forbidden' });
     }
     const room = await Room.update(req.body,
@@ -403,7 +402,7 @@ async function updateRoom$1(req, res) {
 
 async function deleteRoom(req, res) {
   try {
-    if (req.user.dataValues.role !== 'ROLE_ADMIN') {
+    if (req.user.dataValues.role !== roles.ROLE_ADMIN) {
       res.status(StatusCodes.FORBIDDEN).json({ message: 'Forbidden' });
     }
     const room = await Room.destroy({

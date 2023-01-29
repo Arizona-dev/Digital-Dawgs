@@ -1,20 +1,29 @@
-import * as justNeedToImportOtherwiseSequelizeDontRecognizeModelsAndRelations from '../src/model/postgres/index';
+import * as justNeedToImportOtherwiseSequelizeDontRecognizeModelsAndRelations from '../src/model/index';
+import { Room } from '../src/model/index';
 
-import { roles } from '../src/utils/Helpers';
-import { User } from '../src/model/postgres/User.postgres';
+const rooms = [
+    {
+        title: 'Room 1',
+        description: 'Room 1 description',
+        maxParticipants: 10,
+        closed: false,
+    },
+    {
+        title: 'Room 2',
+        description: 'Room 2 description',
+        maxParticipants: 10,
+        closed: false,
+    },
+    {
+        title: 'Room 3',
+        description: 'Room 3 description',
+        maxParticipants: 10,
+        closed: true,
+    },
+];
 
-// const adminUser = {
-//     email: 'nstudio2k@gmail.com',
-//     username: 'ZhenZhen',
-//     password: '123123123',
-//     active: true,
-//     role: roles.ROLE_ADMIN,
-//     shopPoints: 0,
-//     lastUsernameChange: null,
-// };
-// create many interests
 const fixtures = async function () {
-    // await User.create(adminUser);
+    await Room.bulkCreate(rooms);
 };
 
 fixtures().then(() => {
