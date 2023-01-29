@@ -350,6 +350,7 @@ async function getRoomMessages(req, res) {
       limit: 50,
       order: [['createdAt', 'DESC']],
     });
+    // sort messages by createdAt
     messages.sort((a, b) => a.createdAt - b.createdAt);
     if (!messages) {
       res.status(StatusCodes.NOT_FOUND).json({ message: 'Messages not found' });

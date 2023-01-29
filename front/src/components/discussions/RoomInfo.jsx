@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { UserContext } from "../../contexts/user.context";
 
 const Room = ({ id, title, description, maxParticipants, closed, participants = 0 }) => {
-  const navigate = useNavigate();
   const { socket, setRoom, setParticipants } = useContext(UserContext);
+  const navigate = useNavigate();
 
   const enterRoom = () => {
     navigate(`/discussions/${id}`);

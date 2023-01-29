@@ -22,9 +22,7 @@ const Login = () => {
     const jwt = urlParams.get('token');
 
     if (jwt) {
-      // save token in cookie
       Cookies.set('token', jwt);
-      // fetch user
       fetch(import.meta.env.VITE_API_URL + '/api/user', {
         method: 'GET',
         headers: {
@@ -43,7 +41,6 @@ const Login = () => {
         );
     }
   }, [setUser]);
-
 
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-slate-900">

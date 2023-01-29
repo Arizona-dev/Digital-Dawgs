@@ -27,6 +27,20 @@ export const fetchRoom = async (id) => {
     }
   );
   const data = await response.json();
-  console.log(data);
+  return data;
+}
+
+export const getMessages = async (roomId) => {
+  const response = await fetch(import.meta.env.VITE_API_URL + "/api/rooms/" + roomId + "/messages",
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer " + Cookies.get("token"),
+      },
+    }
+  );
+  const data = await response.json();
   return data;
 }

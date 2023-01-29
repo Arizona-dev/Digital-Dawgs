@@ -1,6 +1,6 @@
 import Cookies from 'js-cookie';
 import { io } from "socket.io-client";
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom'
 import { UserContext } from './contexts/user.context';
 import Main from './components/base/Main'
@@ -35,7 +35,6 @@ function App() {
               const newSocket = io(import.meta.env.VITE_API_URL, {
                 query: { userId: data.id }
               })
-              console.log(newSocket);
               setSocket(newSocket);
             }
           })
@@ -45,7 +44,7 @@ function App() {
     setInterval(() => {
       setLoading(false);
     }, 200);
-  }, [setUser, setLoading]);
+  }, [setUser, setLoading, setSocket, user]);
 
   return (
     <div className="flex flex-col">
@@ -76,8 +75,6 @@ function App() {
                 user ? <Navigate to="/" /> : <Login />
               } />
               <Route path="*" element={<Navigate to="/" />} />
-              {/* <Route path="/logout" exact component={Logout} /> */}
-              {/* <Route path="/admin" exact component={Admin} /> */}
             </Routes>
           </BrowserRouter>
         </UserContext.Provider>
