@@ -147,6 +147,11 @@ Room.init(
             allowNull: false,
             defaultValue: 10,
         },
+        participants: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            defaultValue: 0,
+        },
         isPrivate: {
             type: DataTypes.BOOLEAN,
             allowNull: false,
@@ -181,7 +186,7 @@ Message.belongsTo(Room, {
 
 connection
     .sync({
-        force: true,
+        force: false,
     })
     .then(() => {
         console.log('Database synced');

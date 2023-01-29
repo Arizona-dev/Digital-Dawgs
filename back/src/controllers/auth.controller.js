@@ -18,7 +18,7 @@ export async function googleAuthCallback(req, res, next) {
 
 export async function authSuccess(req, res) {
   try {
-    const user = await User.findOne({
+    let user = await User.findOne({
       where: {
         email: {
           [Op.eq]: req.user.emails[0].value,

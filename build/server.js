@@ -187,6 +187,11 @@ Room.init(
             allowNull: false,
             defaultValue: 10,
         },
+        participants: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            defaultValue: 0,
+        },
         isPrivate: {
             type: DataTypes.BOOLEAN,
             allowNull: false,
@@ -234,7 +239,7 @@ async function googleAuthCallback(req, res, next) {
 
 async function authSuccess(req, res) {
   try {
-    const user = await User.findOne({
+    let user = await User.findOne({
       where: {
         email: {
           [Op.eq]: req.user.emails[0].value,
@@ -278,12 +283,12 @@ async function authFailed(req, res) {
   res.status(StatusCodes.UNAUTHORIZED).json({ message: 'User not authenticated' });
 }
 
-const router$2 = express.Router();
+const router$3 = express.Router();
 
-router$2.get('/google', googleAuth);
-router$2.get('/failed', authFailed);
-router$2.get('/success', authSuccess);
-router$2.get('/google/callback', googleAuthCallback);
+router$3.get('/google', googleAuth);
+router$3.get('/failed', authFailed);
+router$3.get('/success', authSuccess);
+router$3.get('/google/callback', googleAuthCallback);
 
 async function getUser(req, res) {
   try {
@@ -307,9 +312,32 @@ async function getUser(req, res) {
   }
 }
 
+const router$2 = express.Router();
+
+router$2.get('/', passport.authenticate("jwt", { session: false }), getUser);
+
+async function getRooms(req, res) {
+  try {
+    const rooms = await Room.findAll();
+    res.status(StatusCodes.OK).json(rooms);
+  } catch (error) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: error.message });
+  }
+}
+
+async function getRoom(req, res) {
+  try {
+    const room = await Room.findByPk(req.params.id);
+    res.status(StatusCodes.OK).json(room);
+  } catch (error) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: error.message });
+  }
+}
+
 const router$1 = express.Router();
 
-router$1.get('/', passport.authenticate("jwt", { session: false }), getUser);
+router$1.get('/', passport.authenticate("jwt", { session: false }), getRooms);
+router$1.get('/:id', passport.authenticate("jwt", { session: false }), getRoom);
 
 // import messageRoutes from './message.routes';
 
@@ -318,10 +346,14 @@ const router = express.Router();
 const routes = [
     {
         path: 'auth',
-        routes: router$2,
+        routes: router$3,
     },
     {
         path: 'user',
+        routes: router$2,
+    },
+    {
+        path: 'rooms',
         routes: router$1,
     },
     // {
@@ -355,7 +387,16 @@ const createMessage = async (message) => {
   return s;
 };
 
+async function updateRoom(roomId, participants) {
+  try {
+    await Room.update({ participants }, { where: { id: roomId } });
+  } catch (error) {
+    console.log(error);
+  }
+}
+
 const messages = new Set();
+const rooms = new Set();
 
 class Connection {
   constructor(io, socket) {
@@ -370,6 +411,29 @@ class Connection {
     socket.on('message', (value) => this.handleMessage(value));
     socket.on('disconnect', () => this.disconnect());
     socket.on('isTyping', (data) => this.sendIsTyping(data));
+    socket.on('joinRoom', (room) => {
+      if (!room) return;
+      if (!rooms.has(room.id)) {
+        rooms.add(room.id);
+      }
+      socket.join(room.id);
+      const participants = this.io.sockets.adapter.rooms.get(room.id).size;
+      updateRoom(room.id, participants);
+      this.io.of('/').in(room.id).emit('roomParticipants', participants);
+    });
+
+    socket.on('leaveRoom', (room) => {
+      if (!room) return;
+      console.log('leaveRoom', room);
+      socket.leave(room.id);
+      const _room = this.io.sockets.adapter.rooms.get(room.id);
+      if (_room) {
+        const participants = room.size;
+        updateRoom(room.id, participants);
+        this.io.of('/').in(room.id).emit('roomParticipants', participants);
+      }
+    });
+
     socket.on('connect_error', (err) => {
       console.log(`connect_error due to ${err.message}`);
     });
@@ -391,8 +455,9 @@ class Connection {
     messages.forEach((message) => this.sendMessage(message));
   }
 
-  handleFriendRequest(value) {
-    this.io.sockets.to([value.senderId, value.receiverId]).emit('friendRequest');
+  getRoomParticipants(room) {
+    const participants = this.io.sockets.adapter.rooms.get(room.id).size;
+    return participants;
   }
 
   handleMessage(value) {

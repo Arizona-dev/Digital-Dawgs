@@ -23,6 +23,11 @@ Room.init(
             allowNull: false,
             defaultValue: 10,
         },
+        participants: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            defaultValue: 0,
+        },
         isPrivate: {
             type: DataTypes.BOOLEAN,
             allowNull: false,
