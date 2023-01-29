@@ -5,7 +5,7 @@ import { User } from './User.postgres';
 import { Room } from './Room.postgres';
 
 Message.belongsTo(User, {
-    as: 'author',
+    as: 'user',
     foreignKey: 'authorId',
 });
 

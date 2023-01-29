@@ -8,14 +8,8 @@ export const createMessage = async (message) => {
     include: [
       {
         model: User,
-        as: 'sender',
-        attributes: ['id', 'username', 'email'],
-      },
-      {
-        model: User,
-        as: 'receiver',
-        attributes: ['id', 'username', 'email'],
-
+        as: 'user',
+        attributes: ['id', 'username', 'email', 'avatar'],
       },
     ],
   });

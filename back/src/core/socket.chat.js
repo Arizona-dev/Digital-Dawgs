@@ -47,14 +47,10 @@ class Connection {
   }
 
   async sendMessage(data) {
-    const message = await messageService.createMessage({
-      text: data.text,
-      senderId: data.sender.id,
-      receiverId: data.receiver.id,
-    });
+    const message = await messageService.createMessage(data);
 
     if (this.user) {
-      this.io.sockets.to([data.receiver.id, data.sender.id]).emit('message', message);
+      this.io.sockets.to([data.roomId]).emit('message', message);
     }
   }
 
@@ -68,15 +64,13 @@ class Connection {
   }
 
   handleMessage(value) {
+    if (value.message.length === 0) return;
+    if (value.message.length > 5000) return;
     const message = {
       id: uuidv4(),
-      text: value.text,
-      receiver: {
-        ...value.receiver,
-      },
-      sender: {
-        ...value.sender,
-      },
+      text: value.message,
+      authorId: value.authorId,
+      roomId: value.room.id,
       createdAt: Date.now(),
     };
 

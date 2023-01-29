@@ -215,7 +215,7 @@ Room.init(
 );
 
 Message.belongsTo(User, {
-    as: 'author',
+    as: 'user',
     foreignKey: 'authorId',
 });
 
@@ -334,10 +334,37 @@ async function getRoom(req, res) {
   }
 }
 
+async function getRoomMessages(req, res) {
+  try {
+    const messages = await Message.findAll({
+      where: {
+        roomId: req.params.id,
+      },
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'username', 'email', 'avatar'],
+        },
+      ],
+      limit: 50,
+      order: [['createdAt', 'DESC']],
+    });
+    messages.sort((a, b) => a.createdAt - b.createdAt);
+    if (!messages) {
+      res.status(StatusCodes.NOT_FOUND).json({ message: 'Messages not found' });
+    }
+    res.status(StatusCodes.OK).json(messages);
+  } catch (error) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: error.message });
+  }
+}
+
 const router$1 = express.Router();
 
 router$1.get('/', passport.authenticate("jwt", { session: false }), getRooms);
 router$1.get('/:id', passport.authenticate("jwt", { session: false }), getRoom);
+router$1.get('/:id/messages', passport.authenticate("jwt", { session: false }), getRoomMessages);
 
 // import messageRoutes from './message.routes';
 
@@ -373,14 +400,8 @@ const createMessage = async (message) => {
     include: [
       {
         model: User,
-        as: 'sender',
-        attributes: ['id', 'username', 'email'],
-      },
-      {
-        model: User,
-        as: 'receiver',
-        attributes: ['id', 'username', 'email'],
-
+        as: 'user',
+        attributes: ['id', 'username', 'email', 'avatar'],
       },
     ],
   });
@@ -440,14 +461,10 @@ class Connection {
   }
 
   async sendMessage(data) {
-    const message = await createMessage({
-      text: data.text,
-      senderId: data.sender.id,
-      receiverId: data.receiver.id,
-    });
+    const message = await createMessage(data);
 
     if (this.user) {
-      this.io.sockets.to([data.receiver.id, data.sender.id]).emit('message', message);
+      this.io.sockets.to([data.roomId]).emit('message', message);
     }
   }
 
@@ -461,15 +478,13 @@ class Connection {
   }
 
   handleMessage(value) {
+    if (value.message.length === 0) return;
+    if (value.message.length > 5000) return;
     const message = {
       id: v4(),
-      text: value.text,
-      receiver: {
-        ...value.receiver,
-      },
-      sender: {
-        ...value.sender,
-      },
+      text: value.message,
+      authorId: value.authorId,
+      roomId: value.room.id,
       createdAt: Date.now(),
     };
 
