@@ -20,7 +20,7 @@ const Home = () => {
         return <RoomInfo key={room.id} id={room.id} title={room.title} description={room.description} participants={room.participants} maxParticipants={room.maxParticipants} closed={room.closed} />;
       });
     }
-  };    
+  };
 
   return (
     <main className="flex flex-col w-full sm:w-10/12 mx-auto mt-6 lg:max-w-3xl shadow-md">

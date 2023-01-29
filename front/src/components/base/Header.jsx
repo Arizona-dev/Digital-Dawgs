@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import logo from '../../assets/logo.png';
 import { Link } from 'react-router-dom';
+import { UserContext } from '../../contexts/user.context';
 
 const Header = () => {
+  const { user } = useContext(UserContext);
+
   return (
     <header className='flex w-full border-b bg-white justify-center'>
       <div className='flex flex-col sm:flex-row w-full py-6 px-6 lg:max-w-3xl'>
@@ -16,9 +19,11 @@ const Header = () => {
             <li className="mr-4 customBlue">
               <Link to="/">Accueil</Link>
             </li>
-            <li className="">
-              <Link to="/">Besoin d'aide?</Link>
-            </li>
+            {user && user.role === 'ROLE_ADMIN' && (
+              <li className="">
+                <Link to="/panel">Panel d'administration</Link>
+              </li>
+            )}
           </ul>
         </div>
       </div>

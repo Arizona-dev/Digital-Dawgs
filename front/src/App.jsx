@@ -7,6 +7,7 @@ import Main from './components/base/Main'
 import Login from './components/base/Login'
 import Home from './components/base/Home'
 import Room from './components/discussions/Room'
+import Panel from './components/admin/Panel'; 
 import './App.css'
 
 function App() {
@@ -70,6 +71,9 @@ function App() {
               }>
                 <Route path="/" element={<Home />} />
                 <Route path="discussions/:roomId" element={<Room />} />
+                <Route path="panel" element={
+                  user && user.role === 'ROLE_ADMIN' ? <Panel /> : <Navigate to="/" />
+                } />
               </Route>
               <Route path="login" element={
                 user ? <Navigate to="/" /> : <Login />

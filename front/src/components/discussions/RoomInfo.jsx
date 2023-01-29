@@ -4,9 +4,12 @@ import { UserContext } from "../../contexts/user.context";
 
 const Room = ({ id, title, description, maxParticipants, closed, participants = 0 }) => {
   const { socket, setRoom, setParticipants } = useContext(UserContext);
+  const full = participants >= maxParticipants;
   const navigate = useNavigate();
 
   const enterRoom = () => {
+    if (participants >= maxParticipants) return;
+    if (closed) return;
     navigate(`/discussions/${id}`);
   };
 
@@ -33,8 +36,9 @@ const Room = ({ id, title, description, maxParticipants, closed, participants = 
       <div className="flex justify-between">
         <div className="flex items-baseline text-medium">
           <h1>{title}</h1>
-          {closed && <span className="text-slate-600 ml-1">-</span>}
+          {(closed || full) && <span className="text-slate-600 ml-1">-</span>}
           {closed && <span className="text-red-600 ml-1">Fermé</span>}
+          {full && <span className="text-red-600 ml-1">Complet</span>}
         </div>
         <p className="font-thin text-xs text-slate-600">{participants} / {maxParticipants} participants</p>
       </div>

@@ -21,23 +21,33 @@ const Room = () => {
     }
   }
 
+  const leaveRoom = () => {
+    socket.emit('leaveRoom', room);
+  }
+
   useEffect(() => {
     const loadRoom = async () => {
       if (firstLoad) {
         const room = await fetchRoom(roomId);
         if (!room) navigate('/');
+        if (room.deleted || room.closed) navigate('/');
+        if (participants >= room.maxParticipants) navigate('/');
         const messages = await getMessages(room.id);
         setMessages(messages);
         socket.emit('joinRoom', room);
         setFirstLoad(false);
+        setRoom(room);
       }
-      socket.on('roomParticipants', (participants) => {
-        setParticipants(participants);
-      });
-      setRoom(room);
     };
     loadRoom();
-  }, [fetchRoom, socket, useParams, setRoom, setParticipants, setMessages, setFirstLoad]);
+    socket.on('roomParticipants', (participants) => {
+      setParticipants(participants);
+    });
+
+    return () => {
+      leaveRoom();
+    };
+  }, [fetchRoom, socket, useParams, setRoom, setParticipants, setMessages, setFirstLoad, navigate]);
 
   useEffect(() => {
     socket.on('message', (message) => {
@@ -88,25 +98,25 @@ const Room = () => {
   }
 
   return (
-    <div className="flex flex-col justify-center md:p-6 max-w-6xl mx-auto w-full max-h-[100vh]">
-      <div className="flex flex-col justify-center bg-white md:rounded-lg shadow-lg">
-        <div className="flex flex-row justify-between border-b w-full p-3 md:p-4">
-          <h1 className="text-2xl font-bold">{room.title}</h1>
-          <div className="flex flex-row items-center">
-            <img src="https://img.icons8.com/ios/50/000000/online.png" alt="online" className="w-6 h-6" />
-            <span className="text-gray-500 ml-2">{participants} / {room.maxParticipants} Participants</span>
+    <div className="relative top-0 flex flex-col justify-center md:p-4 max-w-6xl mx-auto max-h-[100vh] w-full">
+      <div className="relative flex flex-col justify-center bg-white rounded-b-lg shadow-lg max-h-[90vh]">
+        <div className="flex flex-col justify-center bg-white md:rounded-t-lg shadow-lg px-4 pt-2 border-b">
+          <div className="flex flex-row justify-between w-full">
+            <h1 className="text-2xl font-bold">{room.title}</h1>
+            <div className="flex flex-row items-center">
+              <img src="https://img.icons8.com/ios/50/000000/online.png" alt="online" className="w-6 h-6" />
+              <span className="text-gray-500 ml-2">{participants} / {room.maxParticipants} Participants</span>
+            </div>
+          </div>
+          <div className="flex flex-row justify-between w-full">
+            <span className="text-sm text-gray-500 md:mb-3 line-clamp-4">{room.description}</span>
           </div>
         </div>
-        <div className="flex flex-row justify-between w-full p-2 md:p-4 max-md:border-b">
-          <span className="text-gray-500 md:mb-3 line-clamp-4">{room.description}</span>
-        </div>
-      </div>
-      <div className="relative flex flex-col md:mt-6 bg-white rounded-lg shadow-lg h-[65vh]">
-        <div className="flex flex-col w-full p-4 gap-4 overflow-y-auto mb-16">
+        <div className="flex flex-col w-full p-4 gap-4 overflow-y-auto mb-16 min-h-[60vh]">
           {mapMessages(messages)}
           <div ref={bottomRef} />
         </div>
-      <InputArea room={room} message={message} updateMessage={updateMessage} sendMessage={sendMessage} maxMessageLengthError={maxMessageLengthError} />
+        <InputArea room={room} message={message} updateMessage={updateMessage} sendMessage={sendMessage} maxMessageLengthError={maxMessageLengthError} />
       </div>
     </div>
   );
