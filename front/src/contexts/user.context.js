@@ -4,5 +4,9 @@ export const UserContext = createContext({
     user: null,
     setUser: () => {},
     socket: null,
-    setSocket: () => {}
+    setSocket: () => {},
+    participants: 0,
+    setParticipants: () => {},
+    room: [],
+    setRoom: () => {},
 });

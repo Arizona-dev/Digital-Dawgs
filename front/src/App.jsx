@@ -1,15 +1,19 @@
 import Cookies from 'js-cookie';
 import { io } from "socket.io-client";
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom'
 import { UserContext } from './contexts/user.context';
 import Main from './components/base/Main'
 import Login from './components/base/Login'
+import Home from './components/base/Home'
+import Room from './components/discussions/Room'
 import './App.css'
 
 function App() {
   const [user, setUser] = useState(null);
   const [socket, setSocket] = useState(null);
+  const [room, setRoom] = useState(null);
+  const [participants, setParticipants] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,10 +47,6 @@ function App() {
     }, 200);
   }, [setUser, setLoading]);
 
-  socket && socket.on('connect', () => {
-    console.log('Socket connected');
-  });
-
   return (
     <div className="flex flex-col">
       {loading ? (
@@ -58,16 +58,24 @@ function App() {
           user,
           setUser,
           socket,
-          setSocket
+          setSocket,
+          room,
+          setRoom,
+          participants,
+          setParticipants
         }} >
           <BrowserRouter>
             <Routes>
               <Route path="/" element={
                 user ? <Main /> : <Navigate to="/login" />
-              } />
+              }>
+                <Route path="/" element={<Home />} />
+                <Route path="discussions/:roomId" element={<Room />} />
+              </Route>
               <Route path="login" element={
                 user ? <Navigate to="/" /> : <Login />
               } />
+              <Route path="*" element={<Navigate to="/" />} />
               {/* <Route path="/logout" exact component={Logout} /> */}
               {/* <Route path="/admin" exact component={Admin} /> */}
             </Routes>
