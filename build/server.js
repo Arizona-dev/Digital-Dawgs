@@ -319,6 +319,7 @@ router$2.get('/', passport.authenticate("jwt", { session: false }), getUser);
 async function getRooms(req, res) {
   try {
     const rooms = await Room.findAll();
+    rooms.sort((a, b) => a.createdAt - b.createdAt);
     res.status(StatusCodes.OK).json(rooms);
   } catch (error) {
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: error.message });
@@ -361,11 +362,69 @@ async function getRoomMessages(req, res) {
   }
 }
 
+async function createRoom(req, res) {
+  try {
+    if (req.user.dataValues.role !== 'ROLE_ADMIN') {
+      res.status(StatusCodes.FORBIDDEN).json({ message: 'Forbidden' });
+    }
+    const { title, description, maxParticipants, isPrivate } = req.body;
+    if (!title || !description || !maxParticipants || !!isPrivate) {
+      res.status(StatusCodes.BAD_REQUEST).json({ message: 'Missing fields' });
+    }
+    const room = await Room.create({
+      title,
+      description,
+      maxParticipants,
+      isPrivate,
+    });
+    res.status(StatusCodes.CREATED).json(room);
+  } catch (error) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: error.message });
+  }
+}
+
+async function updateRoom$1(req, res) {
+  try {
+    if (req.user.dataValues.role !== 'ROLE_ADMIN') {
+      res.status(StatusCodes.FORBIDDEN).json({ message: 'Forbidden' });
+    }
+    const room = await Room.update(req.body,
+      {
+        where: {
+          id: req.params.id,
+        },
+      }
+    );
+    res.status(StatusCodes.OK).json(room);
+  } catch (error) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: error.message });
+  }
+}
+
+async function deleteRoom(req, res) {
+  try {
+    if (req.user.dataValues.role !== 'ROLE_ADMIN') {
+      res.status(StatusCodes.FORBIDDEN).json({ message: 'Forbidden' });
+    }
+    const room = await Room.destroy({
+      where: {
+        id: req.params.id,
+      },
+    });
+    res.status(StatusCodes.OK).json(room);
+  } catch (error) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: error.message });
+  }
+}
+
 const router$1 = express.Router();
 
+router$1.post('/', passport.authenticate("jwt", { session: false }), createRoom);
 router$1.get('/', passport.authenticate("jwt", { session: false }), getRooms);
 router$1.get('/:id', passport.authenticate("jwt", { session: false }), getRoom);
 router$1.get('/:id/messages', passport.authenticate("jwt", { session: false }), getRoomMessages);
+router$1.delete('/:id', passport.authenticate("jwt", { session: false }), deleteRoom);
+router$1.put('/:id', passport.authenticate("jwt", { session: false }), updateRoom$1);
 
 // import messageRoutes from './message.routes';
 
@@ -418,7 +477,6 @@ async function updateRoom(roomId, participants) {
 }
 
 const messages = new Set();
-const rooms = new Set();
 
 class Connection {
   constructor(io, socket) {
@@ -435,9 +493,6 @@ class Connection {
     socket.on('isTyping', (data) => this.sendIsTyping(data));
     socket.on('joinRoom', (room) => {
       if (!room) return;
-      if (!rooms.has(room.id)) {
-        rooms.add(room.id);
-      }
       socket.join(room.id);
       const participants = this.io.sockets.adapter.rooms.get(room.id).size;
       updateRoom(room.id, participants);
@@ -446,11 +501,10 @@ class Connection {
 
     socket.on('leaveRoom', (room) => {
       if (!room) return;
-      console.log('leaveRoom', room);
-      socket.leave(room.id);
       const _room = this.io.sockets.adapter.rooms.get(room.id);
       if (_room) {
-        const participants = room.size;
+        socket.leave(room.id);
+        const participants = _room.size;
         updateRoom(room.id, participants);
         this.io.of('/').in(room.id).emit('roomParticipants', participants);
       }
@@ -465,7 +519,7 @@ class Connection {
     const message = await createMessage(data);
 
     if (this.user) {
-      this.io.sockets.to([data.roomId]).emit('message', message);
+      this.io.of('/').in(data.roomId).emit('message', message);
     }
   }
 
@@ -532,6 +586,7 @@ server.use(cookieSession({
   keys: ['key1', 'key2'],
 }));
 
+server.use(express.json());
 server.use(passport.initialize());
 server.use(passport.session());
 server.use(function (req, res, next) {

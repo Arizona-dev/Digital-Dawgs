@@ -24,6 +24,7 @@ server.use(cookieSession({
   keys: ['key1', 'key2'],
 }))
 
+server.use(express.json())
 server.use(passport.initialize());
 server.use(passport.session());
 server.use(function (req, res, next) {

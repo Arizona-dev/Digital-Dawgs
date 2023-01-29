@@ -3,7 +3,6 @@ import * as messageService from '../services/message.service.js';
 import * as roomService from '../services/room.service.js';
 
 const messages = new Set();
-const rooms = new Set();
 
 class Connection {
   constructor(io, socket) {
@@ -20,9 +19,6 @@ class Connection {
     socket.on('isTyping', (data) => this.sendIsTyping(data));
     socket.on('joinRoom', (room) => {
       if (!room) return;
-      if (!rooms.has(room.id)) {
-        rooms.add(room.id);
-      }
       socket.join(room.id);
       const participants = this.io.sockets.adapter.rooms.get(room.id).size;
       roomService.updateRoom(room.id, participants);
@@ -31,11 +27,10 @@ class Connection {
 
     socket.on('leaveRoom', (room) => {
       if (!room) return;
-      console.log('leaveRoom', room);
-      socket.leave(room.id);
       const _room = this.io.sockets.adapter.rooms.get(room.id);
       if (_room) {
-        const participants = room.size;
+        socket.leave(room.id);
+        const participants = _room.size;
         roomService.updateRoom(room.id, participants);
         this.io.of('/').in(room.id).emit('roomParticipants', participants);
       }
@@ -50,7 +45,7 @@ class Connection {
     const message = await messageService.createMessage(data);
 
     if (this.user) {
-      this.io.sockets.to([data.roomId]).emit('message', message);
+      this.io.of('/').in(data.roomId).emit('message', message);
     }
   }
 

@@ -11,12 +11,20 @@ Create a .env at the root
 Add the following lines :
 
 ```bash
-APP_ENV=dev
-JWT_PASSPHRASE=your_secret
-PORT=3000
-CLIENT_PORT=3001
+DATABASE_URL=postgresql://user:password@postgres:5432/digital-dawgs
 
-DATABASE_URL=postgres://user:password@postgres:5432/digital-dawgs
+CLIENT_PORT=3000
+FRONT_BASE_URL=http://localhost:3000
+VITE_APP_URL=http://localhost:3000
+
+PORT=3001
+BACK_BASE_URL=http://localhost:3001
+VITE_API_URL=http://localhost:3001
+
+GOOGLE_CLIENT_ID='' // add your google client id
+GOOGLE_CLIENT_SECRET='' // add your google client secret
+
+JWT_SECRET=your_secret
 ```
 
 ## Run the app
