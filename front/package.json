@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@headlessui/react": "^1.7.8",
     "@tailwindcss/line-clamp": "^0.4.2",
     "emoji-picker-react": "^4.4.7",
     "js-cookie": "^3.0.1",
